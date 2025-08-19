@@ -1,14 +1,4 @@
-
-    <div id="loader" class="spinner-grow" role="status" style="display: none">
-    </div>
-    <div id="success" class="alert alert-success" role="alert" style="display: none; font-size: 3em;">
-    </div>
-    <div id="error" class="alert alert-danger" role="alert" style="display: none; font-size: 3em;">
-    </div>
-
-    <script>
-      const STORAGE_KEY = 'userid_' + <?=data["id"]?>;
-      window.onload <!doctype html>
+<!doctype html>
 <html lang="en">
   <head>
     <!-- Required meta tags -->
@@ -20,7 +10,17 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
     <title>Control de acceso QR</title>
   </head>
-  <body>= function () {
+  <body>
+    <div id="loader" class="spinner-grow" role="status" style="display: none">
+    </div>
+    <div id="success" class="alert alert-success" role="alert" style="display: none; font-size: 3em;">
+    </div>
+    <div id="error" class="alert alert-danger" role="alert" style="display: none; font-size: 3em;">
+    </div>
+
+    <script>
+      const STORAGE_KEY = 'userid_' + <?=data["id"]?>;
+      window.onload = function () {
         var action = "<?=data["action"]?>";
         var control = "<?=data["control"]?>";
         var userid = "<?=data["userid"]?>";
@@ -73,3 +73,4 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js" integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
   </body>
 </html>
+
