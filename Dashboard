@@ -1,0 +1,516 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Dashboard de Asamblea</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #4f46e5;
+            --primary-light: #818cf8;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --danger-color: #ef4444;
+            --text-primary: #1f2937;
+            --text-secondary: #6b7280;
+            --bg-light: #f8fafc;
+            --bg-card: #ffffff;
+            --border-color: #e5e7eb;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-light); /* Un fondo más sutil para la página */
+            min-height: 100vh;
+            padding: 0;
+            margin: 0;
+        }
+
+        .navbar {
+            backdrop-filter: blur(20px);
+            background: rgba(255, 255, 255, 0.95) !important;
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 0;
+        }
+
+        .navbar-brand {
+            font-weight: 600;
+            color: var(--primary-color) !important;
+            font-size: 1.25rem;
+        }
+
+        .nav-link {
+            color: var(--text-secondary) !important;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            border-radius: 0.5rem;
+            padding: 0.5rem 1rem !important;
+            margin: 0 0.25rem;
+        }
+
+        .nav-link:hover, .nav-link.active {
+            color: var(--primary-color) !important;
+            background: rgba(79, 70, 229, 0.1);
+        }
+
+        .dashboard-container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+
+        .main-header {
+            background: var(--bg-card);
+            border-radius: 1rem;
+            padding: 2rem;
+            text-align: center;
+            box-shadow: var(--shadow);
+            margin-bottom: 2rem;
+            border: 1px solid var(--border-color);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .assembly-logo {
+            width: 80px;
+            height: 80px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1rem;
+            color: white;
+            font-size: 2rem;
+        }
+
+        .assembly-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: white;
+            margin: 0;
+            letter-spacing: -0.025em;
+        }
+
+        .assembly-subtitle {
+            color: rgba(255,255,255,0.8);
+            font-size: 1.1rem;
+            margin-top: 0.5rem;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .metric-card {
+            background: var(--bg-card);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border-color);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .metric-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--primary-color);
+        }
+
+        .metric-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .metric-card.success::before { background: var(--success-color); }
+        .metric-card.danger::before { background: var(--danger-color); }
+
+        .metric-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 0.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1rem;
+            font-size: 1.5rem;
+            color: white;
+        }
+
+        .metric-icon.primary { background: var(--primary-color); }
+        .metric-icon.success { background: var(--success-color); }
+        .metric-icon.danger { background: var(--danger-color); }
+
+        .metric-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            line-height: 1;
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-label {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .countdown-section {
+            background: var(--bg-card);
+            border-radius: 1rem;
+            padding: 2rem;
+            text-align: center;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border-color);
+            margin-bottom: 2rem;
+        }
+
+        .countdown-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 1.5rem;
+        }
+
+        .countdown-timer {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .countdown-item {
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
+            color: white;
+            padding: 1rem;
+            border-radius: 0.75rem;
+            min-width: 90px;
+            text-align: center;
+        }
+
+        .countdown-number {
+            font-size: 2rem;
+            font-weight: 700;
+            display: block;
+            line-height: 1;
+        }
+
+        .countdown-label {
+            font-size: 0.75rem;
+            opacity: 0.9;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-top: 0.25rem;
+        }
+
+        .countdown-ended {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--success-color);
+            padding: 1rem;
+            background: rgba(16, 185, 129, 0.1);
+            border-radius: 0.75rem;
+            border: 2px solid var(--success-color);
+        }
+
+        .voting-results {
+            background: var(--bg-card);
+            border-radius: 1rem;
+            padding: 2rem;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border-color);
+            margin-bottom: 2rem;
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .question-card {
+            background: var(--bg-light);
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid var(--border-color);
+        }
+
+        .question-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+        }
+
+        .option-result {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 0;
+        }
+
+        .option-name {
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .option-votes {
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+
+        .progress-bar-custom {
+            height: 8px;
+            background: var(--border-color);
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 0.25rem 0 1rem;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary-color), var(--primary-light));
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+
+        .footer {
+            background: var(--bg-card);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            text-align: center;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        .alert {
+            border: none;
+            border-radius: 0.75rem;
+            padding: 1rem 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .alert-info { background: rgba(79, 70, 229, 0.1); color: var(--primary-color); }
+        .alert-warning { background: rgba(245, 158, 11, 0.1); color: var(--warning-color); }
+
+        @media (max-width: 768px) {
+            .dashboard-container { margin: 1rem auto; padding: 0 0.5rem; }
+            .main-header { padding: 1.5rem; }
+            .assembly-title { font-size: 1.5rem; }
+            .metrics-grid { grid-template-columns: 1fr; gap: 1rem; }
+            .metric-card { padding: 1rem; }
+            .metric-value { font-size: 2rem; }
+            .countdown-timer { gap: 0.5rem; }
+            .countdown-item { min-width: 60px; padding: 0.75rem; }
+            .countdown-number { font-size: 1.5rem; }
+        }
+    </style>
+</head>
+<body>
+    <? var url = ScriptApp.getService().getUrl(); ?>
+    <nav class="navbar navbar-expand-lg sticky-top">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="<?= url ?>?page=dashboard">
+                <i class="bi bi-clipboard-data-fill"></i> Panel Principal
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="<?= url ?>?page=dashboard">Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="<?= url ?>?page=formulario">Registro</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="<?= url ?>?page=consultaqr">Consulta QR</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="<?= url ?>?page=votacion">Votación</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="<?= url ?>?page=acceso">Acceso QR</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="dashboard-container">
+        <!-- Header Principal -->
+        <div class="main-header">
+            <div class="assembly-logo">
+                <i class="bi bi-people-fill"></i>
+            </div>
+            <h1 class="assembly-title">ASAMBLEA DE COPROPIETARIOS</h1>
+            <p class="assembly-subtitle">Sistema de Gestión y Control de Asistencia</p>
+        </div>
+
+        <!-- Métricas -->
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div class="metric-icon primary">
+                    <i class="bi bi-person-check-fill"></i>
+                </div>
+                <div class="metric-value"><?= data.asistentesCount ?></div>
+                <div class="metric-label">Asistentes Únicos</div>
+            </div>
+
+            <div class="metric-card success">
+                <div class="metric-icon success">
+                    <i class="bi bi-graph-up-arrow"></i>
+                </div>
+                <div class="metric-value"><?= data.participationPercentage ?>%</div>
+                <div class="metric-label">Participación</div>
+            </div>
+
+            <div class="metric-card <?= data.quorumClass === 'alcanzado' ? 'success' : 'danger' ?>">
+                <div class="metric-icon <?= data.quorumClass === 'alcanzado' ? 'success' : 'danger' ?>">
+                    <?= data.quorumClass === 'alcanzado' ? '<i class="bi bi-check-circle-fill"></i>' : '<i class="bi bi-x-circle-fill"></i>' ?>
+                </div>
+                <div class="metric-value"><?= data.quorumStatus.replace('¡', '').replace('!', '').toUpperCase() ?></div>
+                <div class="metric-label">Quorum (> <?= data.quorumThresholdDisplay ?>%)</div>
+            </div>
+        </div>
+
+        <!-- Cuenta Regresiva -->
+        <div class="countdown-section">
+            <h3 class="countdown-title">
+                <i class="bi bi-clock-fill"></i> Tiempo restante para el inicio
+            </h3>
+            <div id="countdown-wrapper">
+                <div class="countdown-timer" id="countdown-display">
+                    <div class="countdown-item">
+                        <span class="countdown-number" id="days">00</span>
+                        <span class="countdown-label">Días</span>
+                    </div>
+                    <div class="countdown-item">
+                        <span class="countdown-number" id="hours">00</span>
+                        <span class="countdown-label">Horas</span>
+                    </div>
+                    <div class="countdown-item">
+                        <span class="countdown-number" id="minutes">00</span>
+                        <span class="countdown-label">Minutos</span>
+                    </div>
+                    <div class="countdown-item">
+                        <span class="countdown-number" id="seconds">00</span>
+                        <span class="countdown-label">Segundos</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Resultados de Votación -->
+        <div class="voting-results">
+            <h2 class="section-title">
+                <i class="bi bi-bar-chart-steps"></i>
+                Resultados de la Votación
+            </h2>
+            
+            <? if (data.votingResults.error) { ?>
+                <div class="alert alert-warning"><i class="bi bi-exclamation-triangle-fill"></i> <?= data.votingResults.error ?></div>
+            <? } else if (!data.votingResults.questions || data.votingResults.questions.length === 0) { ?>
+                <div class="alert alert-info"><i class="bi bi-info-circle-fill"></i> No hay preguntas de votación configuradas para mostrar.</div>
+            <? } else if (data.votingResults.totalVotesCast === 0) { ?>
+                <div class="alert alert-info"><i class="bi bi-info-circle-fill"></i> Aún no se han registrado votos. Los resultados aparecerán aquí en tiempo real.</div>
+            <? } else { ?>
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle-fill"></i>
+                    Total de votos emitidos: <strong><?= data.votingResults.totalVotesCast ?></strong>
+                </div>
+
+                <? data.votingResults.questions.forEach((question, index) => { 
+                    let totalVotesForQuestion = Object.values(question.votes).reduce((sum, count) => sum + count, 0);
+                ?>
+                    <div class="question-card">
+                        <h4 class="question-title"><?= (index + 1) + '. ' + question.text ?></h4>
+                        
+                        <? if (totalVotesForQuestion === 0) { ?>
+                            <p class="text-secondary small">Aún no hay votos para esta pregunta.</p>
+                        <? } else { ?>
+                            <? for (const [option, votes] of Object.entries(question.votes)) { 
+                                const percentage = totalVotesForQuestion > 0 ? ((votes / totalVotesForQuestion) * 100).toFixed(1) : 0;
+                            ?>
+                                <div class="option-result">
+                                    <span class="option-name"><?= option ?></span>
+                                    <span class="option-votes"><?= votes ?> <?= votes === 1 ? 'voto' : 'votos' ?></span>
+                                </div>
+                                <div class="progress-bar-custom">
+                                    <div class="progress-fill" style="width: <?= percentage ?>%;"></div>
+                                </div>
+                            <? } ?>
+                        <? } ?>
+                    </div>
+                <? }); ?>
+            <? } ?>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p><strong>Plataforma de Gestión de Asambleas y Control de Ingreso</strong></p>
+            <p>🤖 Desarrollado por: SOMOS NS-5 © <span id="currentYear"></span></p>
+            <p>📱 310 569 64 35</p>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Actualizar año actual
+        document.getElementById("currentYear").textContent = new Date().getFullYear();
+
+        // Refrescar la página cada 30 segundos
+        setTimeout(() => { location.reload(); }, 30000);
+
+        // Cuenta regresiva dinámica
+        const countDownDate = new Date('<?= data.assemblyStartDateISO ?>').getTime();
+        
+        const countdownFunction = setInterval(function() {
+            const now = new Date().getTime();
+            const distance = countDownDate - now;
+
+            if (distance < 0) {
+                clearInterval(countdownFunction);
+                document.getElementById("countdown-wrapper").innerHTML = 
+                    '<div class="countdown-ended">¡LA ASAMBLEA HA COMENZADO!</div>';
+                return;
+            }
+
+            const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+            document.getElementById("days").textContent = days < 10 ? '0' + days : days;
+            document.getElementById("hours").textContent = hours < 10 ? '0' + hours : hours;
+            document.getElementById("minutes").textContent = minutes < 10 ? '0' + minutes : minutes;
+            document.getElementById("seconds").textContent = seconds < 10 ? '0' + seconds : seconds;
+
+        }, 1000);
+    </script>
+</body>
+</html>
