@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Formulario de Registro de Residentes</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <style>
+        body {
+            background-color: #f0f2f5;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 20px 0;
+        }
+        .form-container {
+            max-width: 700px;
+            margin: auto;
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .form-container h1 {
+            text-align: center;
+            color: #0d6efd;
+            margin-bottom: 25px;
+            font-weight: 600;
+        }
+        .form-section-title {
+            font-size: 1.3rem;
+            font-weight: 500;
+            color: #343a40;
+            margin-top: 20px;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #0d6efd;
+            padding-bottom: 5px;
+        }
+        .form-check-label {
+            font-weight: 500;
+        }
+        #arrendatarioInfo {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 15px;
+            border: 1px solid #dee2e6;
+        }
+        .btn-submit-custom {
+            background-color: #0d6efd;
+            border-color: #0d6efd;
+        }
+        .btn-submit-custom:hover {
+            background-color: #0b5ed7;
+            border-color: #0a58ca;
+        }
+        /* Para el spinner de carga */
+        #loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.7);
+            z-index: 9999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container form-container">
+        <h1><i class="bi bi-person-lines-fill"></i> Registro de Residentes</h1>
+
+        <form id="residentForm">
+            <h2 class="form-section-title">Información del Propietario</h2>
+            <div class="mb-3">
+                <label for="nombrePropietario" class="form-label">Nombre Completo del Propietario <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" id="nombrePropietario" name="nombrePropietario" required>
+            </div>
+            <div class="mb-3">
+                <label for="docPropietario" class="form-label">No. Documento del Propietario <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" id="docPropietario" name="docPropietario" required>
+            </div>
+            <div class="mb-3">
+                <label for="torreApto" class="form-label">Torre/Apartamento Ejemplo: T6A1502<span class="text-danger">*</span></label>
+                <input type="text" class="form-control" id="torreApto" name="torreApto" placeholder="Ejemplo: T6A1502" required>
+            </div>
+
+            <div class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" value="" id="esArrendatarioCheck">
+                <label class="form-check-label" for="esArrendatarioCheck">
+                    ¿Persona Autorizada? (Marcar si aplica)
+                </label>
+            </div>
+
+            <div id="arrendatarioInfo" style="display:none;">
+                <h2 class="form-section-title">Información del Tercero Autorizado</h2>
+                <div class="mb-3">
+                    <label for="nombreArrendatario" class="form-label">Nombre Completo del Tercero<span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="nombreArrendatario" name="nombreArrendatario">
+                </div>
+                <div class="mb-3">
+                    <label for="docArrendatario" class="form-label">No. Documento del Tercero <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="docArrendatario" name="docArrendatario">
+                </div>
+                <div class="mb-3">
+                    <label for="contratoFile" class="form-label">Adjuntar Autorización (PDF, JPG, PNG) <span class="text-danger">*</span></label>
+                    <input class="form-control" type="file" id="contratoFile" name="contratoFile" accept=".pdf,.jpg,.jpeg,.png">
+                    <div class="form-text">Tamaño máximo: 5MB.</div>
+                </div>
+            </div>
+
+            <div class="d-grid gap-2 mt-4">
+                <button type="submit" class="btn btn-primary btn-lg btn-submit-custom">
+                    <i class="bi bi-check-circle-fill"></i> Registrar Residente
+                </button>
+            </div>
+        </form>
+        <div id="statusMessage" class="mt-3"></div>
+
+        <!-- Loader/Spinner -->
+        <div id="loader" style="display: none;">
+            <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+                <span class="visually-hidden">Cargando...</span>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p" crossorigin="anonymous"></script>
+    <script>
+        const arrendatarioCheck = document.getElementById('esArrendatarioCheck');
+        const arrendatarioInfoDiv = document.getElementById('arrendatarioInfo');
+        const nombreArrendatarioInput = document.getElementById('nombreArrendatario');
+        const docArrendatarioInput = document.getElementById('docArrendatario');
+        const contratoFileInput = document.getElementById('contratoFile');
+        const residentForm = document.getElementById('residentForm');
+        const statusMessage = document.getElementById('statusMessage');
+        const loader = document.getElementById('loader');
+
+        arrendatarioCheck.addEventListener('change', function() {
+            if (this.checked) {
+                arrendatarioInfoDiv.style.display = 'block';
+                nombreArrendatarioInput.required = true;
+                docArrendatarioInput.required = true;
+                contratoFileInput.required = true;
+            } else {
+                arrendatarioInfoDiv.style.display = 'none';
+                nombreArrendatarioInput.required = false;
+                docArrendatarioInput.required = false;
+                contratoFileInput.required = false;
+                // Opcional: Limpiar los campos del arrendatario si se desmarca
+                nombreArrendatarioInput.value = '';
+                docArrendatarioInput.value = '';
+                contratoFileInput.value = null; // Limpiar el input de archivo
+            }
+        });
+
+        residentForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            loader.style.display = 'flex'; // Mostrar loader
+            statusMessage.innerHTML = ''; // Limpiar mensajes previos
+
+            const formData = {
+                nombrePropietario: document.getElementById('nombrePropietario').value,
+                docPropietario: document.getElementById('docPropietario').value,
+                torreApto: document.getElementById('torreApto').value,
+                esArrendatario: arrendatarioCheck.checked,
+                nombreArrendatario: nombreArrendatarioInput.value,
+                docArrendatario: docArrendatarioInput.value,
+                // El archivo se manejará de forma diferente, pasaremos el objeto de archivo
+            };
+
+            if (arrendatarioCheck.checked && contratoFileInput.files.length > 0) {
+                const file = contratoFileInput.files[0];
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    // event.target.result contiene los datos del archivo como base64
+                    // También necesitamos el nombre del archivo y el tipo
+                    const fileData = {
+                        fileName: file.name,
+                        mimeType: file.type,
+                        fileContent: event.target.result.substr(event.target.result.indexOf(',') + 1) // Contenido base64 sin el prefijo
+                    };
+                    formData.archivoContrato = fileData; // Añadir datos del archivo al objeto formData
+                    submitData(formData);
+                };
+                reader.onerror = function(error) {
+                    console.error("Error al leer el archivo: ", error);
+                    showStatusMessage('danger', 'Error al procesar el archivo.');
+                    loader.style.display = 'none';
+                };
+                reader.readAsDataURL(file); // Leer el archivo como Data URL (base64)
+            } else {
+                submitData(formData); // Enviar datos sin archivo si no es necesario o no se seleccionó
+            }
+        });
+
+        function submitData(dataObject) {
+            google.script.run
+                .withSuccessHandler(function(response) {
+                    loader.style.display = 'none';
+                    if (response.success) {
+                        showStatusMessage('success', response.message);
+                        residentForm.reset(); // Limpiar formulario
+                        arrendatarioInfoDiv.style.display = 'none'; // Ocultar sección arrendatario
+                        arrendatarioCheck.checked = false;
+                    } else {
+                        showStatusMessage('danger', 'Error: ' + response.message);
+                    }
+                })
+                .withFailureHandler(function(error) {
+                    loader.style.display = 'none';
+                    showStatusMessage('danger', 'Error de comunicación con el servidor: ' + error.message);
+                    console.error("Error en Google Script:", error);
+                })
+                .processForm(dataObject);
+        }
+
+        function showStatusMessage(type, message) {
+            statusMessage.innerHTML = `<div class="alert alert-${type}" role="alert">${message}</div>`;
+        }
+    </script>
+</body>
+</html>
