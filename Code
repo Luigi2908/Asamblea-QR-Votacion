@@ -1,0 +1,469 @@
+// --- CONFIGURACIÓN GLOBAL ---
+const REGISTRO_SHEET_NAME = "Registro";
+const USERID_COLUMN_REGISTRO = 1;
+const TOTAL_BASE_PARA_PARTICIPACION = 200;
+const QUORUM_THRESHOLD_VALUE = 50.1;
+
+const SHEET_NAME_DIRECTORIO = "Directorio Residentes";
+const FOLDER_ID_CONTRATOS = "TU_ID_DE_CARPETA_EN_GOOGLE_DRIVE";// Direccion Web Google Drive
+
+const SHEET_NAME_RESIDENTES_PARA_QR = "Residentes";
+const COL_RESIDENTES_ID = "ID";
+const COL_RESIDENTES_QR_URL = "QR registro";
+
+const SHEET_NAME_PREGUNTAS_VOTACION = "PreguntasVotacion";
+const SHEET_NAME_VOTOS_REGISTRADOS = "VotosRegistrados";
+const USERID_COLUMN_VOTOS_REGISTRADOS = 2;
+
+// --- ¡NUEVO! --- FECHA Y HORA DE INICIO DE LA ASAMBLEA
+// Formato: AAAA-MM-DDTHH:mm:ss-05:00 (ISO 8601 con zona horaria. -05:00 es para Colombia/Perú/Ecuador)
+// ¡MODIFICA ESTA FECHA PARA TU EVENTO!
+const ASSEMBLY_START_DATETIME = "2025-08-22T22:12:00-05:00";
+
+
+// --- FUNCIÓN doGet PRINCIPAL (MODIFICADA SEGÚN SOLICITUD) ---
+function doGet(e) {
+  var page = e.parameter.page;
+  var tpl;
+  var params = e.parameters; 
+
+  switch (page) {
+    case "dashboard":
+      tpl = HtmlService.createTemplateFromFile("Dashboard.html");
+      tpl.data = getDashboardData();
+      return tpl.evaluate().setTitle("Dashboard de Asamblea").setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+
+    case "formulario":
+      tpl = HtmlService.createTemplateFromFile("Formulario.html");
+      return tpl.evaluate().setTitle("Formulario de Residentes").setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+
+    case "consultaqr":
+      tpl = HtmlService.createTemplateFromFile("ConsultaQR.html");
+      return tpl.evaluate().setTitle("Consulta QR Residente").setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+
+    case "votacion":
+      tpl = HtmlService.createTemplateFromFile("Votacion.html");
+      tpl.spreadsheetId = SpreadsheetApp.getActiveSpreadsheet().getId();
+      return tpl.evaluate().setTitle("Sistema de Votación").setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+    
+    // El antiguo portal ahora está en su propia ruta
+    case "portal": 
+      tpl = HtmlService.createTemplateFromFile("Index.html"); 
+      return tpl.evaluate().setTitle("Portal de Gestión").setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+
+    // Tanto ?page=acceso como la URL base cargarán la página de acceso QR
+    case "acceso": 
+    default: // Página de inicio por defecto será el control de acceso QR
+      tpl = HtmlService.createTemplateFromFile("Page.html"); 
+      tpl.data = params; 
+      tpl.data.id = SpreadsheetApp.getActiveSpreadsheet().getId(); 
+      return tpl.evaluate().setTitle("Control de Acceso QR").setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  }
+}
+
+
+// --- FUNCIÓN PARA OBTENER RESULTADOS DE VOTACIÓN ---
+function getVotingResults() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const votosSheet = ss.getSheetByName(SHEET_NAME_VOTOS_REGISTRADOS);
+  const preguntasSheet = ss.getSheetByName(SHEET_NAME_PREGUNTAS_VOTACION);
+
+  const results = {
+    totalVotesCast: 0,
+    questions: []
+  };
+
+  if (!votosSheet) {
+    Logger.log(`Advertencia: Hoja de votos '${SHEET_NAME_VOTOS_REGISTRADOS}' no encontrada.`);
+    return { ...results, error: `Hoja de votos '${SHEET_NAME_VOTOS_REGISTRADOS}' no encontrada.` };
+  }
+  if (!preguntasSheet) {
+    Logger.log(`Advertencia: Hoja de preguntas '${SHEET_NAME_PREGUNTAS_VOTACION}' no encontrada.`);
+    return { ...results, error: `Hoja de preguntas '${SHEET_NAME_PREGUNTAS_VOTACION}' no encontrada.` };
+  }
+
+  // 1. Cargar las preguntas para tener sus textos y IDs
+  const preguntasData = preguntasSheet.getDataRange().getValues();
+  const questionsMap = new Map(); // Mapa de ID_Pregunta a {text, options}
+  if (preguntasData.length > 1) {
+    const pregHeaders = preguntasData[0].map(h => h.toString().trim());
+    const idColPreg = pregHeaders.indexOf("ID_Pregunta");
+    const textColPreg = pregHeaders.indexOf("Texto_Pregunta");
+    const optionsColPreg = pregHeaders.indexOf("Opciones");
+
+    if (idColPreg === -1 || textColPreg === -1 || optionsColPreg === -1) {
+      return { ...results, error: "Columnas ID_Pregunta, Texto_Pregunta u Opciones faltantes en la hoja de Preguntas." };
+    }
+
+    for (let i = 1; i < preguntasData.length; i++) {
+      const row = preguntasData[i];
+      const qId = row[idColPreg].toString().trim();
+      if (qId) {
+        questionsMap.set(qId, {
+          id: qId,
+          text: row[textColPreg].toString().trim(),
+          options: row[optionsColPreg] ? row[optionsColPreg].toString().split(';').map(opt => opt.trim()) : [],
+          votes: {} // Para almacenar conteo de votos por opción
+        });
+      }
+    }
+  } else {
+     return { ...results, error: "No hay preguntas configuradas en la hoja de Preguntas." };
+  }
+
+  // 2. Procesar los votos
+  const votosData = votosSheet.getDataRange().getValues();
+  if (votosData.length <= 1) { // Solo encabezados o vacía
+    // Devolver la estructura de preguntas pero con votos en cero
+    questionsMap.forEach(q => {
+        q.options.forEach(opt => q.votes[opt] = 0); // Inicializar votos de opciones a 0
+        results.questions.push(q);
+    });
+    results.message = "Aún no se han registrado votos.";
+    return results;
+  }
+
+  results.totalVotesCast = votosData.length - 1; // Restar la fila de encabezado
+
+  const votosHeaders = votosData[0].map(h => h.toString().trim());
+
+  for (let i = 1; i < votosData.length; i++) { // Iterar sobre cada fila de voto
+    const votoRow = votosData[i];
+    votosHeaders.forEach((header, colIndex) => {
+      if (header.startsWith("Respuesta_")) {
+        const questionId = header.substring("Respuesta_".length);
+        const questionInfo = questionsMap.get(questionId);
+        if (questionInfo) {
+          const answer = votoRow[colIndex] ? votoRow[colIndex].toString().trim() : null;
+          if (answer) {
+            if (questionInfo.votes[answer]) {
+              questionInfo.votes[answer]++;
+            } else {
+              questionInfo.votes[answer] = 1;
+            }
+          }
+        }
+      }
+    });
+  }
+
+  // Asegurar que todas las opciones de las preguntas tengan un conteo, incluso si es 0
+  questionsMap.forEach(q => {
+    q.options.forEach(opt => {
+      if (!q.votes[opt]) {
+        q.votes[opt] = 0;
+      }
+    });
+    results.questions.push(q); // Añadir la pregunta procesada a los resultados
+  });
+  
+  // Ordenar las preguntas por ID si es necesario (ej. P1, P2, P10)
+  results.questions.sort((a, b) => {
+    const numA = parseInt(a.id.substring(1), 10);
+    const numB = parseInt(b.id.substring(1), 10);
+    if (isNaN(numA) || isNaN(numB)) return a.id.localeCompare(b.id); // fallback a string compare
+    return numA - numB;
+  });
+
+
+  return results;
+}
+
+// --- FUNCIONES PARA EL DASHBOARD (MODIFICADA) ---
+function getDashboardData() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const registroSheet = ss.getSheetByName(REGISTRO_SHEET_NAME);
+
+  let asistentesCount = 0;
+  let participationPercentage = 0;
+  let quorumStatus = "¡No Hay Quorum!";
+  let quorumClass = "no-alcanzado";
+
+  if (!registroSheet) {
+    Logger.log("Error: Hoja de Registro no encontrada: " + REGISTRO_SHEET_NAME);
+    const votingResults = getVotingResults();
+    return {
+      asistentesCount: "Error",
+      participationPercentage: "0.00",
+      quorumStatus: "Error Hoja Reg.",
+      quorumClass: "no-alcanzado",
+      quorumThresholdDisplay: QUORUM_THRESHOLD_VALUE,
+      votingResults: votingResults,
+      assemblyStartDateISO: ASSEMBLY_START_DATETIME // <-- Se añade la fecha de inicio
+    };
+  }
+
+  const registroData = registroSheet.getDataRange().getValues();
+  const uniqueUserIds = new Set();
+  if (registroData.length > 1) {
+    for (let i = 1; i < registroData.length; i++) {
+      let userId = registroData[i][USERID_COLUMN_REGISTRO - 1];
+      if (userId && userId.toString().trim() !== "") {
+        uniqueUserIds.add(userId.toString().trim());
+      }
+    }
+  }
+  asistentesCount = uniqueUserIds.size;
+
+  if (TOTAL_BASE_PARA_PARTICIPACION > 0) {
+    participationPercentage = (asistentesCount / TOTAL_BASE_PARA_PARTICIPACION) * 100;
+  } else {
+    participationPercentage = 0;
+  }
+
+  if (participationPercentage > QUORUM_THRESHOLD_VALUE) {
+    quorumStatus = "¡Hay Quorum!";
+    quorumClass = "alcanzado";
+  } else {
+    quorumStatus = "¡No Hay Quorum!";
+    quorumClass = "no-alcanzado";
+  }
+
+  const votingResults = getVotingResults(); 
+
+  return {
+    asistentesCount: asistentesCount,
+    participationPercentage: participationPercentage.toFixed(2),
+    quorumStatus: quorumStatus,
+    quorumClass: quorumClass,
+    quorumThresholdDisplay: QUORUM_THRESHOLD_VALUE,
+    votingResults: votingResults,
+    assemblyStartDateISO: ASSEMBLY_START_DATETIME // <-- Se añade la fecha de inicio
+  };
+}
+
+
+// --- FUNCIONES PARA EL CONTROL DE ACCESO QR (Page.html) ---
+function checkin(userid, control) {
+  if (userid && control) {
+    var now = new Date();
+    SpreadsheetApp.getActiveSpreadsheet().getSheetByName(REGISTRO_SHEET_NAME).appendRow([userid, control, now]);
+    return "Registrado: " + now.toLocaleString();
+  }
+  return "Error: Faltan datos para el check-in.";
+}
+
+
+// --- FUNCIONES PARA EL FORMULARIO DE NUEVOS RESIDENTES (Formulario.html) ---
+function processForm(formData) {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName(SHEET_NAME_DIRECTORIO);
+    if (!sheet) {
+      throw new Error("Hoja '" + SHEET_NAME_DIRECTORIO + "' no encontrada.");
+    }
+
+    const timestamp = new Date();
+    let tipoResidente = formData.esArrendatario ? "Arrendatario" : "Propietario";
+    let nombreArrendatario = formData.nombreArrendatario || "";
+    let docArrendatario = formData.docArrendatario || "";
+    let archivoContratoId = "";
+    let archivoContratoNombre = "";
+
+    if (formData.esArrendatario && formData.archivoContrato) {
+      if (FOLDER_ID_CONTRATOS && FOLDER_ID_CONTRATOS !== "TU_ID_DE_CARPETA_EN_GOOGLE_DRIVE" && FOLDER_ID_CONTRATOS !== "") {
+        const fileData = formData.archivoContrato;
+        const decodedFile = Utilities.base64Decode(fileData.fileContent);
+        const blob = Utilities.newBlob(decodedFile, fileData.mimeType, fileData.fileName);
+        
+        const folder = DriveApp.getFolderById(FOLDER_ID_CONTRATOS);
+        const uploadedFile = folder.createFile(blob);
+        archivoContratoId = uploadedFile.getId();
+        archivoContratoNombre = uploadedFile.getName();
+      } else {
+          Logger.log("ADVERTENCIA: Se intentó subir un archivo pero FOLDER_ID_CONTRATOS no está configurado.");
+      }
+    }
+
+    sheet.appendRow([
+      timestamp,
+      tipoResidente,
+      formData.nombrePropietario,
+      formData.docPropietario,
+      formData.torreApto,
+      nombreArrendatario,
+      docArrendatario,
+      archivoContratoId,
+      archivoContratoNombre
+    ]);
+
+    return { success: true, message: "¡Residente registrado exitosamente!" };
+
+  } catch (e) {
+    Logger.log("Error en processForm: " + e.toString() + " Stack: " + e.stack);
+    return { success: false, message: "Error al registrar: " + e.message };
+  }
+}
+
+// --- FUNCIONES PARA LA CONSULTA DE QR (ConsultaQR.html) ---
+function getResidentQR(residentId) {
+  try {
+    if (!residentId) {
+      return { success: false, message: "ID de residente no proporcionado." };
+    }
+
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName(SHEET_NAME_RESIDENTES_PARA_QR);
+    if (!sheet) {
+      throw new Error(`Hoja '${SHEET_NAME_RESIDENTES_PARA_QR}' no encontrada.`);
+    }
+
+    const data = sheet.getDataRange().getValues();
+    if (data.length < 1) { 
+        throw new Error(`La hoja '${SHEET_NAME_RESIDENTES_PARA_QR}' está vacía o no tiene encabezados.`);
+    }
+    const headers = data[0];
+    const idColIndex = headers.indexOf(COL_RESIDENTES_ID);
+    const qrUrlColIndex = headers.indexOf(COL_RESIDENTES_QR_URL);
+
+    if (idColIndex === -1) {
+      throw new Error(`Columna encabezado '${COL_RESIDENTES_ID}' no encontrada en la hoja '${SHEET_NAME_RESIDENTES_PARA_QR}'. Verifique el nombre exacto del encabezado.`);
+    }
+    if (qrUrlColIndex === -1) {
+      throw new Error(`Columna encabezado '${COL_RESIDENTES_QR_URL}' no encontrada en la hoja '${SHEET_NAME_RESIDENTES_PARA_QR}'. Verifique el nombre exacto del encabezado.`);
+    }
+
+    for (let i = 1; i < data.length; i++) { 
+      if (data[i][idColIndex] != null && data[i][idColIndex].toString().trim() === residentId.toString().trim()) {
+        const qrImageUrl = data[i][qrUrlColIndex];
+        if (qrImageUrl && qrImageUrl.toString().trim() !== "") {
+          return { success: true, qrImageUrl: qrImageUrl.toString().trim(), residentIdFound: data[i][idColIndex].toString().trim() };
+        } else {
+          return { success: true, qrImageUrl: null, residentIdFound: data[i][idColIndex].toString().trim(), message: "Residente encontrado, pero no hay URL de QR registrada." };
+        }
+      }
+    }
+    return { success: false, message: `No se encontró un residente con el ID '${residentId}'. Verifique el ID e inténtelo de nuevo.` };
+  } catch (e) {
+    Logger.log("Error en getResidentQR: " + e.toString() + " Stack: " + e.stack);
+    return { success: false, message: "Error interno del servidor: " + e.message };
+  }
+}
+
+
+// --- FUNCIONES PARA EL SISTEMA DE VOTACIÓN (Votacion.html) ---
+function getVotingQuestions() {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName(SHEET_NAME_PREGUNTAS_VOTACION);
+    if (!sheet) {
+      throw new Error(`Hoja de preguntas de votación '${SHEET_NAME_PREGUNTAS_VOTACION}' no encontrada.`);
+    }
+    const data = sheet.getDataRange().getValues();
+    if (data.length <= 1) { 
+      return { success: true, questions: [], message: "No hay preguntas de votación configuradas." };
+    }
+
+    const questions = [];
+    const headers = data[0].map(h => h.toString().trim());
+    const idCol = headers.indexOf("ID_Pregunta");
+    const textCol = headers.indexOf("Texto_Pregunta");
+    const typeCol = headers.indexOf("Tipo_Pregunta");
+    const optionsCol = headers.indexOf("Opciones");
+
+    if (idCol === -1 || textCol === -1 || typeCol === -1 || optionsCol === -1) {
+      throw new Error("Faltan encabezados requeridos (ID_Pregunta, Texto_Pregunta, Tipo_Pregunta, Opciones) en la hoja '" + SHEET_NAME_PREGUNTAS_VOTACION + "'.");
+    }
+
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      if (row[idCol] && row[textCol]) { 
+        questions.push({
+          id: row[idCol].toString().trim(),
+          text: row[textCol].toString().trim(),
+          type: row[typeCol] ? row[typeCol].toString().trim() : "unica",
+          options: row[optionsCol] ? row[optionsCol].toString().split(';').map(opt => opt.trim()) : []
+        });
+      }
+    }
+    return { success: true, questions: questions };
+  } catch (e) {
+    Logger.log("Error en getVotingQuestions: " + e.toString() + "\nStack: " + e.stack);
+    return { success: false, message: "Error al obtener preguntas: " + e.message, questions: [] };
+  }
+}
+
+function submitVotes(userId, answers) {
+  try {
+    if (!userId || userId.trim() === "") {
+      return { success: false, message: "ID de votante no válido o no proporcionado." };
+    }
+    if (!answers || Object.keys(answers).length === 0) {
+      return { success: false, message: "No se recibieron respuestas." };
+    }
+
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let sheet = ss.getSheetByName(SHEET_NAME_VOTOS_REGISTRADOS);
+    if (!sheet) {
+      sheet = ss.insertSheet(SHEET_NAME_VOTOS_REGISTRADOS);
+      Logger.log(`Hoja '${SHEET_NAME_VOTOS_REGISTRADOS}' creada.`);
+    }
+
+    const data = sheet.getDataRange().getValues();
+    if (data.length > 1) { 
+        const userIdColIndex = USERID_COLUMN_VOTOS_REGISTRADOS - 1;
+        if (data.length > 0 && data[0].length > userIdColIndex) {
+            for (let i = 1; i < data.length; i++) {
+                if (data[i][userIdColIndex] && data[i][userIdColIndex].toString().trim() === userId.trim()) {
+                    return { success: false, message: `El usuario ${userId} ya ha registrado un voto.` };
+                }
+            }
+        }
+    }
+
+    const timestamp = new Date();
+    const questionIdsFromAnswers = Object.keys(answers);
+    let headers = [];
+
+    if (sheet.getLastRow() === 0) {
+      headers = ["Timestamp", "UserID_Votante"];
+      questionIdsFromAnswers.forEach(qId => headers.push(`Respuesta_${qId}`));
+      sheet.appendRow(headers);
+    } else {
+      headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(String);
+    }
+
+    const headerIndexMap = {};
+    headers.forEach((h, i) => headerIndexMap[h.trim()] = i);
+    
+    questionIdsFromAnswers.forEach(qId => {
+      const headerName = `Respuesta_${qId}`;
+      if (!headerIndexMap.hasOwnProperty(headerName)) {
+        Logger.log(`Nueva columna detectada para votación: ${headerName}. Se añadirá a la hoja.`);
+        const nextCol = sheet.getLastColumn() + 1;
+        sheet.getRange(1, nextCol).setValue(headerName);
+        headers.push(headerName); 
+        headerIndexMap[headerName] = headers.length - 1; 
+      }
+    });
+    
+    const finalRow = [];
+    for(let i = 0; i < headers.length; i++) {
+        let h = headers[i].trim();
+        if (h === "Timestamp") {
+            finalRow.push(timestamp);
+        } else if (h === "UserID_Votante") {
+            finalRow.push(userId.trim());
+        } else if (h.startsWith("Respuesta_")) {
+            let qId = h.substring("Respuesta_".length);
+            finalRow.push(answers[qId] || ""); 
+        } else {
+            finalRow.push(""); 
+        }
+    }
+
+    sheet.appendRow(finalRow);
+    return { success: true, message: "¡Voto registrado exitosamente!" };
+
+  } catch (e) {
+    Logger.log("Error en submitVotes: " + e.toString() + "\nStack: " + e.stack);
+    return { success: false, message: "Error al registrar el voto: " + e.message };
+  }
+}
+
+
+// --- FUNCIÓN UTILITARIA ---
+function getWebAppUrl() {
+  var url = ScriptApp.getService().getUrl();
+  return url;
+}
