@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-f">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Portal de Gestión de Residentes</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column; /* Para el footer */
+            align-items: center;
+            justify-content: center; /* Centrar contenido principal */
+            padding: 20px;
+            overflow-x: hidden; /* Evitar scroll horizontal por animaciones */
+        }
+
+        .portal-container {
+            background-color: rgba(255, 255, 255, 0.1);
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px); /* Safari */
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            text-align: center;
+            width: 100%;
+            max-width: 900px; /* Ancho máximo del contenedor principal */
+            margin-bottom: auto; /* Empuja el footer hacia abajo */
+        }
+
+        .portal-header h1 {
+            font-size: 2.8rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        .portal-header p {
+            font-size: 1.1rem;
+            color: rgba(255, 255, 255, 0.85);
+            margin-bottom: 40px;
+        }
+
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); /* Responsive grid */
+            gap: 25px;
+        }
+
+        .portal-card {
+            background-color: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            border-radius: 15px;
+            padding: 25px;
+            text-align: center;
+            cursor: pointer;
+            transition: transform 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease;
+            text-decoration: none; /* Para quitar subrayado si se usa <a> */
+            color: #fff;
+        }
+
+        .portal-card:hover {
+            transform: translateY(-10px) scale(1.03);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            background-color: rgba(255, 255, 255, 0.25);
+        }
+
+        .portal-card .card-icon {
+            font-size: 3.5rem; /* Icono más grande */
+            margin-bottom: 15px;
+            display: block;
+            background: -webkit-linear-gradient(45deg, #f3ec78, #af4261); /* Ejemplo de gradiente para iconos */
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            opacity: 0.8;
+            transition: opacity 0.3s ease;
+        }
+        .portal-card:hover .card-icon {
+            opacity: 1;
+        }
+
+
+        .portal-card h3 {
+            font-size: 1.4rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .portal-card p {
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.75);
+            min-height: 40px; /* Para alinear tarjetas con descripciones cortas */
+        }
+        
+        /* Efecto de "resplandor" al hacer clic */
+        .portal-card.clicked {
+            animation: click-glow 0.7s ease-out;
+        }
+
+        @keyframes click-glow {
+            0% {
+                box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.4), 0 20px 40px rgba(0, 0, 0, 0.3);
+            }
+            50% {
+                box-shadow: 0 0 20px 10px rgba(255, 255, 255, 0.6), 0 20px 40px rgba(0, 0, 0, 0.3);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.4), 0 20px 40px rgba(0, 0, 0, 0.3);
+            }
+        }
+
+        .portal-footer {
+            margin-top: 50px; /* Más espacio sobre el footer */
+            padding-top: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.7);
+        }
+        .portal-footer p {
+            margin-bottom: 0.3rem;
+        }
+
+        /* Media queries para mejorar responsividad */
+        @media (max-width: 768px) {
+            .portal-container {
+                padding: 25px;
+            }
+            .portal-header h1 {
+                font-size: 2.2rem;
+            }
+            .card-grid {
+                grid-template-columns: 1fr 1fr; /* Dos columnas en pantallas medianas */
+            }
+        }
+        @media (max-width: 576px) {
+            .card-grid {
+                grid-template-columns: 1fr; /* Una columna en pantallas pequeñas */
+            }
+            .portal-header h1 {
+                font-size: 1.8rem;
+            }
+            .portal-header p {
+                font-size: 1rem;
+            }
+        }
+
+    </style>
+</head>
+<body>
+    <div class="portal-container">
+        <div class="portal-header">
+            <h1>Bienvenido al Portal de Gestión</h1>
+            <p>Accede a las herramientas y funcionalidades para la administración de residentes y asambleas.</p>
+        </div>
+
+        <div class="card-grid">
+            <div class="portal-card" data-url="?page=formulario">
+                <i class="bi bi-person-plus-fill card-icon"></i>
+                <h3>Registro</h3>
+                <p>Añadir nuevos propietarios o autorizados al sistema.</p>
+            </div>
+
+            <div class="portal-card" data-url="?page=consultaqr">
+                <i class="bi bi-qr-code-scan card-icon"></i>
+                <h3>Consulta QR</h3>
+                <p>Verificar o visualizar el código QR de un residente.</p>
+            </div>
+
+            <div class="portal-card" data-url="?page=dashboard">
+                <i class="bi bi-bar-chart-line-fill card-icon"></i>
+                <h3>Dashboard</h3>
+                <p>Estadísticas de asistencia y quorum de la asamblea.</p>
+            </div>
+
+            <div class="portal-card" data-url="?page=votacion"> <!-- MODIFICADO AQUÍ -->
+                <i class="bi bi-check2-square card-icon"></i>
+                <h3>Votación</h3>
+                <p>Participar en las votaciones activas de la asamblea.</p>
+            </div>
+        </div>
+    </div>
+
+    <footer class="portal-footer text-center mt-auto">
+        <p>Plataforma de Gestión de Asambleas y Control de Ingreso</p>
+        <p>🤖 Desarrollado por: NS-5 © <span id="currentYear"></span></p>
+        <p>310 569 64 35</p>
+    </footer>
+
+    <script>
+        document.getElementById("currentYear").textContent = new Date().getFullYear();
+
+        document.querySelectorAll('.portal-card').forEach(card => {
+            card.addEventListener('click', function(e) {
+                const url = this.dataset.url;
+                if (url && url !== "#") { // Solo si hay una URL válida
+                    this.classList.add('clicked');
+                    setTimeout(() => {
+                        window.location.href = url; // Redirige a la URL base + ?page=X
+                    }, 300); 
+                } else if (url === "#") { // Si es un placeholder
+                    alert("Esta funcionalidad aún no está disponible o es un enlace de demostración.");
+                     this.classList.remove('clicked'); // No animar si no hay acción real
+                }
+                // Prevenir comportamiento por defecto si es un <a> con href="#"
+                if (this.tagName === 'A' && (url === "#" || !url)) {
+                    e.preventDefault();
+                }
+            });
+
+            card.addEventListener('animationend', function() {
+                this.classList.remove('clicked');
+            });
+        });
+    </script>
+</body>
+</html>
